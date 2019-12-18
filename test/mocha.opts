@@ -1,0 +1,2 @@
+--recursive "./test/units/**/*.js"
+--file "./test/setup.js"
