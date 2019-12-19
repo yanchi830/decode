@@ -1,9 +1,11 @@
 {
   "scripts": {
-    "test": "./node_modules/.bin/mocha"
+    "test": "./node_modules/.bin/mocha",
+    "test:watch": "./node_modules/.bin/mocha --watch"
   },
   "dependencies": {
     "form-data": "^3.0.0",
+    "lodash": "^4.17.15",
     "node-fetch": "^2.6.0",
     "yargs": "^15.0.2"
   },

