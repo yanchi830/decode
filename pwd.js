@@ -28,8 +28,8 @@ const tryPwd = async (pwd, { id = '5df9b47181171731bc5a51e5' }) => {
       body: `live_view_pwd=${pwd}&live_obj_id=${id}&`,
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        token: '39fe1d0deeb89662f82545d47b97c145',
-        Cookie: 'gr_user_id=e4d8bf16-3286-48d8-a066-e5fa7e90709a; language=English; source=; grwng_uid=9b7dceb6-4a3c-4027-90ec-c12aa9494ad9; token=39fe1d0deeb89662f82545d47b97c145; user_id=5d94c8fdf7794d71bb2af74a; avatar=http%3A%2F%2Fimg2.lespark.cn%2Favatar%2Fali86MWYIfVDHcnlr_150x150; lgid=9132142; nickname=yyc; be366bc92047ce43_gr_session_id=d1e4d8e2-a7dc-4a47-be41-46fc39eb41d0; be366bc92047ce43_gr_session_id_d1e4d8e2-a7dc-4a47-be41-46fc39eb41d0=true; Hm_lvt_01e86260df9ef3ac945a13ba3c90ed64=1576036444,1576651990; Hm_lpvt_01e86260df9ef3ac945a13ba3c90ed64=1576652864',
+        token: '',
+        Cookie: '',
         'bundle-id': 'pc',
         user_id: '5d94c8fdf7794d71bb2af74a'
       },
